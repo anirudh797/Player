@@ -16,6 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.*
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 
@@ -29,6 +32,7 @@ fun VideoPlayerComposable(
     licenseUrl: String,
     licenseRequestHeaders: Map<String, String> = emptyMap()
 ) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     // Remember player across recompositions
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -38,7 +42,11 @@ fun VideoPlayerComposable(
     }
 
 // State for available tracks
-    var availableVideoQualities by remember { mutableStateOf<List<Pair<String, TrackGroup>>>(emptyList()) }
+    var availableVideoQualities by remember {
+        mutableStateOf<List<Pair<String, TrackGroup>>>(
+            emptyList()
+        )
+    }
     var showQualityDialog by remember { mutableStateOf(false) }
 
 // Prepare media item with DRM
@@ -77,10 +85,27 @@ fun VideoPlayerComposable(
         })
     }
 
-// Release player when composable leaves composition
-    DisposableEffect(Unit) {
+// Release player when composable leaves composition, when app loses or regains focus pause/play
+    DisposableEffect(lifecycle) {
+        val lifecycleObserver = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    exoPlayer.pause()
+                }
+
+                Lifecycle.Event.ON_RESUME -> {
+                    exoPlayer.play()
+                }
+
+                else -> { /* do nothing */
+                }
+            }
+        }
+
+        lifecycle.addObserver(lifecycleObserver)
         onDispose {
             exoPlayer.release()
+            lifecycle.removeObserver(lifecycleObserver)
         }
     }
 
@@ -122,7 +147,7 @@ fun VideoPlayerComposable(
             title = { Text("Select Quality") },
             text = {
                 LazyColumn {
-                    items(availableVideoQualities.size) { track  ->
+                    items(availableVideoQualities.size) { track ->
                         val quality = availableVideoQualities[track].first
                         val group = availableVideoQualities[track].second
                         TextButton(
@@ -130,10 +155,16 @@ fun VideoPlayerComposable(
                                 val trackSelector = DefaultTrackSelector(context)
                                 trackSelector.setParameters(
                                     trackSelector.buildUponParameters()
-                                        .setMaxVideoSize(group.getFormat(track).width, group.getFormat(track).height)
+                                        .setMaxVideoSize(
+                                            group.getFormat(track).width,
+                                            group.getFormat(track).height
+                                        )
                                 )
                                 val parameters = trackSelector.parameters.buildUpon()
-                                    .setMaxVideoSize(group.getFormat(track).width, group.getFormat(track).height)
+                                    .setMaxVideoSize(
+                                        group.getFormat(track).width,
+                                        group.getFormat(track).height
+                                    )
                                     .setMaxVideoBitrate(group.getFormat(track).bitrate)
                                     .build()
                                 exoPlayer.trackSelectionParameters = parameters
