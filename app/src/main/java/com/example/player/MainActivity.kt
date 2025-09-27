@@ -1,16 +1,9 @@
 package com.example.player
-
+import VideoPlayerComposable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.player.ui.theme.PlayerTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +12,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PlayerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                VideoPlayerComposable(
+                    context = this,
+                    contentUri = "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11\n" +
+                            "331.mpd",
+                    licenseUrl = "https://cwip-shaka-proxy.appspot.com/no_auth",
+                    licenseRequestHeaders = mapOf(/* "Authorization" to "Bearer YOUR_TOKEN" */)
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    PlayerTheme {
-        Greeting("Android")
     }
 }
