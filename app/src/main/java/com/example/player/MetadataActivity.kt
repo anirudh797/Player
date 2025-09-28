@@ -4,14 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
-import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
 class MetadataActivity : ComponentActivity() {
@@ -31,14 +34,15 @@ fun MetadataScreen() {
     var metadata by remember { mutableStateOf<ShowMetadata?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    var episodeNumber by remember { mutableStateOf<String>("19") }
+    var itemsMap by remember { mutableStateOf<HashMap<Int, String>>(hashMapOf()) }
+    var episodeNumber by remember { mutableIntStateOf(itemsMap.keys.firstOrNull() ?: 19) }
 
     LaunchedEffect(Unit) {
         scope.launch {
             try {
                 val retrofit = Retrofit.Builder()
                     .baseUrl("https://api.mxplayer.in/")
-                    .addConverterFactory(MoshiConverterFactory.create())
+                    .addConverterFactory(ScalarsConverterFactory.create())
                     .build()
                 val api = retrofit.create(ShowApiService::class.java)
                 val response = api.getAroundCurrentEpisodes(
@@ -51,6 +55,16 @@ fun MetadataScreen() {
                     contentLanguages = "hi,en",
                     kidsModeEnabled = false
                 )
+                // Assuming response is a JSON string and itemsArray is a JSONArray inside it
+                val jsonObj = org.json.JSONObject(response)
+                val itemsArray = jsonObj.getJSONArray("items")
+                for (i in 0 until itemsArray.length()) {
+                    val item = itemsArray.getJSONObject(i)
+                    val sequence = item.optInt("sequence")
+                    val contentId = item.optString("id")
+                    itemsMap = HashMap(itemsMap).apply { put(sequence, contentId) }
+                    episodeNumber = itemsMap.keys.first()
+                }
             } catch (e: Exception) {
                 error = e.message
             }
@@ -69,7 +83,7 @@ fun MetadataScreen() {
                     "accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
                     "user-agent" to "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
                 )
-                htmlContent = api.getShowMetadata(getShowName(episodeNumber), "",headers)
+                htmlContent = api.getShowMetadata(getShowName(episodeNumber), getContentId(episodeNumber,itemsMap),headers)
                 htmlContent?.let { it ->
                     val content = extractInnerHtmlJson(it)
                     val contentDetails = content.getJSONObject(2)
@@ -95,21 +109,26 @@ fun MetadataScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Row(
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(400.dp)
                     .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp)
             ) {
-                listOf("19", "20", "21").forEach { epNum ->
+                items(itemsMap.keys.toList()) { epNum ->
                     Button(
                         onClick = { episodeNumber = epNum },
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        modifier = Modifier, // Staggered effect
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (episodeNumber == epNum) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
                         )
                     ) {
-                        Text("Episode $epNum")
+                        Column {
+                            Text("Episode $epNum")
+                            Text("ContentId ${itemsMap[epNum]}")
+                        }
                     }
                 }
             }
@@ -126,15 +145,10 @@ fun MetadataScreen() {
 }
 
 
-fun getShowName(episodeNumber: String): String {
-    return when (episodeNumber) {
-        "19" -> "comedy-khatam-ladai-chalu"
-        "20" -> "gira-gira-kaun-gira"
-        "21" -> "kya-hoga-takhta-palat"
-        else -> {
-            ""
-        }
-    }
+/* These contentIds are fetched at the activity launch with another api call */
+fun getContentId(episodeNumber: Int, itemsMap: Map<Int, String>): String {
+    return itemsMap[episodeNumber] ?: ""
+
 }
 
 @Composable
@@ -153,7 +167,9 @@ fun MetadataContent(metadata: ShowMetadata) {
         Text(text = "Genre: ${metadata.genre}")
         Text(text = "Author: ${metadata.author}")
         Text(text = "Episode Number : ${metadata.episodeNumber}")
-        Text(text = "Description: ${metadata.episodeDescription}")
+        Text(text = "Description: ${metadata.episodeDescription}",
+            maxLines = 5,
+            )
 
     }
 }

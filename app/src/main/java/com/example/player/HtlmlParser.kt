@@ -43,3 +43,23 @@ fun extractInnerHtmlJson(html: String): JSONArray {
     // Parse the innerHTML into JSONArray
     return JSONArray(innerHtmlJsonString!!)
 }
+
+/* Hardcode episdoeName as another api call was required to fetch these */
+fun getShowName(episodeNumber: Int): String {
+    return when (episodeNumber) {
+        19 -> "comedy-khatam-ladai-chalu"
+        20 -> "gira-gira-kaun-gira"
+        21 -> "kya-hoga-takhta-palat"
+        18 -> "dont-tell-me-shut-up"
+        17 -> "arbaz-cancels-aarush"
+        16->  "trustee-ka-beta"
+        15 -> "kiku-ne-bajayi-band"
+        14 -> "takhta-palat-duur-nahi"
+        13 -> "arjun-bana-target"
+        12 -> "akriti-ne-palta-game"
+        11 -> "jab-pawanji-met-dhanashree"
+        else -> {
+            ""
+        }
+    }
+}
