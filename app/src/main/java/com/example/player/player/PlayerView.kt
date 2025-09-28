@@ -138,6 +138,19 @@ fun VideoPlayerComposable(
                 contentDescription = "Quality Settings"
             )
         }
+
+        // Navigation button to MetadataActivity
+        Button(
+            onClick = {
+                val intent = android.content.Intent(context, com.example.player.MetadataActivity::class.java)
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Text("Show Metadata")
+        }
     }
 
 // Quality selection dialog
